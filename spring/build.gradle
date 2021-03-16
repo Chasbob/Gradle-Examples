@@ -1,0 +1,108 @@
+plugins {
+	id 'org.springframework.boot' version '2.4.3'
+	id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+	id 'java'
+	id "org.openapi.generator" version "5.0.1"
+	id "com.diffplug.spotless" version "5.9.0"
+}
+
+group = 'com.demo.gradle'
+version = '1.0.1'
+sourceCompatibility = '11'
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.data:spring-data-commons'
+
+	// lombok annotations
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+	// data bindings
+	implementation 'com.fasterxml.jackson.core:jackson-databind'
+	implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+	implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml'
+	implementation 'org.openapitools:jackson-databind-nullable:0.2.1'
+
+	implementation 'io.swagger:swagger-annotations:1.5.14'
+
+	//	implementation 'org.springdoc:springdoc-openapi-ui:1.5.5'
+	//	implementation 'io.swagger.core.v3:swagger-annotations:2.1.5'
+	// https://mvnrepository.com/artifact/javax.validation/validation-api
+	implementation group: 'javax.validation', name: 'validation-api', version: '2.0.1.Final'
+
+	// implementation "io.springfox:springfox-boot-starter:2.9.2"
+	compile group: 'io.springfox', name: 'springfox-swagger2', version: '2.7.0'
+	compile group: 'io.springfox', name: 'springfox-swagger-ui', version: '2.7.0'
+
+}
+
+test {
+	useJUnitPlatform()
+}
+
+sourceSets {
+	main {
+		java {
+			srcDir "$rootDir/api/src/main/java"
+		}
+	}
+}
+
+openApiGenerate {
+	globalProperties = [
+		modelDocs: "false",
+	]
+	generatorName = 'spring'
+	validateSpec = true
+	outputDir = "$rootDir/api".toString()
+	inputSpec = 'spec-v1.0.0.yaml'
+	ignoreFileOverride = "$rootDir/.openapi-generator-ignore"
+	invokerPackage = 'com.demo.gradle'
+	configOptions = [
+		//		interfaceOnly          : 'true',
+		packageName            : 'com.demo.gradle',
+		apiPackage             : 'com.demo.gradle.api',
+		modelPackage           : 'com.demo.gradle.model',
+		configPackage          : 'com.demo.gradle.configuration',
+		hideGenerationTimestamp: 'true'
+	]
+}
+
+spotless {
+	java {
+		importOrder('java', 'javax', 'org.springframework', 'com.chasbob', '')
+		removeUnusedImports()
+		googleJavaFormat('1.9')
+	}
+	groovyGradle {
+		target '*.gradle'
+		greclipse()
+	}
+}
+
+task clearApiFiles(type: Delete) {
+	delete 'api'
+}
+task removeBin(type: Delete) {
+	delete 'bin'
+}
+
+compileJava.dependsOn tasks.openApiGenerate
+bootRun.dependsOn tasks.openApiGenerate
+clean.dependsOn tasks.removeBin
+
+tasks.named('openApiGenerate').get().finalizedBy('spotlessApply')
+tasks.named('openApiGenerate').get().dependsOn('clearApiFiles')
+
